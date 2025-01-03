@@ -2,7 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routers import register, login, users
+from app.api.routers.login import router as login
+from app.api.routers.register import router as register
+from app.api.routers.users import router as users
 from app.background_tasks.task_scheduler import start_scheduler
 from app.db.database import init_db
 from config import Settings
@@ -13,13 +15,12 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     yield
 
+
 app = FastAPI(lifespan=lifespan)
 settings = Settings()
 
 # Инициализация базы данных
 init_db()
-
-
 
 # Подключение роутеров
 app.include_router(register.router, prefix="/api/register", tags=["register"])

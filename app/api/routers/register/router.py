@@ -3,14 +3,14 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import Session, select
+from sqlmodel import Session
 
+from app.db.confirmeduser.crud import create_confirmed_user, get_confirmed_user_email
 from app.db.confirmeduser.model import ConfirmedUser
-from app.db.pendinguser.model import PendingUser
-from app.db.confirmeduser.crud import create_confirmed_user
-from app.db.pendinguser.crud import create_pending_user
 from app.db.database import get_session
-from app.db.schemas import UserRegister, KeyCheck
+from app.db.pendinguser.crud import create_pending_user, get_pending_user, delete_pending_user_email
+from app.db.pendinguser.model import PendingUser
+from .model import UserRegister, KeyCheck
 
 router = APIRouter()
 
@@ -19,15 +19,14 @@ MIN_WAIT_TIME = timedelta(minutes=1)
 
 @router.post("/register/")
 def add_user(user: UserRegister, session: Session = Depends(get_session)):
-    # Check if user is already confirmed
-    existing_confirmed_user = session.exec(
-        select(ConfirmedUser).where(ConfirmedUser.email == user.email)).first()
+    # Проверка на созданного пользователя
+    existing_confirmed_user = get_confirmed_user_email(session, user.email)
+
     if existing_confirmed_user:
         raise HTTPException(status_code=400, detail="Пользователь с такой почтой уже зарегистрирован.")
 
     # Check if user is pending
-    existing_pending_user = session.exec(
-        select(PendingUser).where(PendingUser.email == user.email)).first()
+    existing_pending_user = get_pending_user(session, user.email)
     if existing_pending_user:
         return handle_existing_pending_user(existing_pending_user, session, user)
 
@@ -51,7 +50,7 @@ def handle_existing_pending_user(existing_pending_user, session, user):
         remaining_time = (existing_pending_user.key_expiry - now).total_seconds()
         return {"message": f"Новый код для подтверждения можно будет отправить через {int(remaining_time)} секунд."}
 
-    # Update key and expiry time if it's been more than 1 minute
+    # Обновить ключ спустя MIN_WAIT_TIME времени
     existing_pending_user.key = str(uuid.uuid4())
     existing_pending_user.key_expiry = now + MIN_WAIT_TIME
     session.add(existing_pending_user)
@@ -65,7 +64,7 @@ def handle_existing_pending_user(existing_pending_user, session, user):
 
 @router.post("/validate/")
 def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
-    pending_user = session.exec(select(PendingUser).where(PendingUser.email == data.email)).first()
+    pending_user = get_pending_user(session, data.email)
 
     if not pending_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден.")
@@ -83,7 +82,6 @@ def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
     )
 
     create_confirmed_user(session, confirmed_user)
-    session.delete(pending_user)
-    session.commit()
+    delete_pending_user_email(session, data.email)
 
     return {"message": "Ключ успешно проверен. Пользователь зарегистрирован."}
