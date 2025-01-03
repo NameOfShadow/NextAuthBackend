@@ -1,15 +1,15 @@
-import glob
 import json
-import os
 import uuid
 from datetime import datetime, timedelta
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
-from apscheduler.schedulers.background import BackgroundScheduler
 
-from app.db.crud import create_pending_user, create_confirmed_user, get_confirmed_user
+from app.db.confirmeduser.model import ConfirmedUser
+from app.db.pendinguser.model import PendingUser
+from app.db.confirmeduser.crud import create_confirmed_user
+from app.db.pendinguser.crud import create_pending_user
 from app.db.database import get_session
-from app.db.models import PendingUser, ConfirmedUser
 from app.db.schemas import UserRegister, KeyCheck
 
 router = APIRouter()
@@ -20,12 +20,14 @@ MIN_WAIT_TIME = timedelta(minutes=1)
 @router.post("/register/")
 def add_user(user: UserRegister, session: Session = Depends(get_session)):
     # Check if user is already confirmed
-    existing_confirmed_user = session.exec(select(ConfirmedUser).where(ConfirmedUser.email == user.email)).first()
+    existing_confirmed_user = session.exec(
+        select(ConfirmedUser).where(ConfirmedUser.email == user.email)).first()
     if existing_confirmed_user:
         raise HTTPException(status_code=400, detail="Пользователь с такой почтой уже зарегистрирован.")
 
     # Check if user is pending
-    existing_pending_user = session.exec(select(PendingUser).where(PendingUser.email == user.email)).first()
+    existing_pending_user = session.exec(
+        select(PendingUser).where(PendingUser.email == user.email)).first()
     if existing_pending_user:
         return handle_existing_pending_user(existing_pending_user, session, user)
 

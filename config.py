@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    api_host: str
+    api_port: int
+
     email_address: str
     email_password: str
     smtp_server: str
