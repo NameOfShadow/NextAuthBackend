@@ -1,6 +1,3 @@
-import uuid
-from datetime import datetime, timedelta
-
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -17,19 +14,7 @@ class UserBase(BaseModel):
 class UserRegister(UserBase):
     pass
 
+
 class KeyCheck(BaseModel):
     email: EmailStr
     key: str
-
-#user = UserRegister(user_id=123,
-#                    first_name="Damir",
-#                    last_name="aas",
-#                    middle_name="qas",
-#                    email="aa@gmail.com",
-#                    key=str(uuid.uuid4()),
-#                    key_expiry=datetime.utcnow() + timedelta(minutes=1)
-#)
-
-#print(user.key_expiry.time().minute)
-#print(datetime.utcnow().time().minute + 1)
-#print(user.key_expiry.time().minute < datetime.utcnow().time().minute + 1.00001)

@@ -1,10 +1,9 @@
-import os
-import asyncio
-import aiosmtplib
 import logging
-
-from typing import List, Optional
+import os
 from email.message import EmailMessage
+from typing import List, Optional
+
+import aiosmtplib
 
 
 class EmailSender:
