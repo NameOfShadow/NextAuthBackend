@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from sqlmodel import Session, select
 
 from app.db.pendinguser.model import PendingUser
@@ -10,13 +11,15 @@ def create_pending_user(session: Session, user: PendingUser) -> PendingUser:
     return user
 
 
-def get_pending_user(session: Session, email: str) -> PendingUser:
+def get_pending_user(session: Session, email: EmailStr) -> PendingUser:
     return session.exec(select(PendingUser).where(PendingUser.email == email)).first()
+
 
 def get_all_pending_users(session: Session):
     return session.exec(select(PendingUser)).all()
 
-def delete_pending_user_email(session: Session, email: str) -> PendingUser:
+
+def delete_pending_user_email(session: Session, email: EmailStr) -> PendingUser:
     delete_user = session.exec(select(PendingUser).where(PendingUser.email == email)).first()
     session.delete(delete_user)
     session.commit()

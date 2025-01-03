@@ -72,7 +72,7 @@ def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
     if pending_user.key != data.key or datetime.utcnow() > pending_user.key_expiry:
         raise HTTPException(status_code=400, detail="Неверный или истекший ключ.")
 
-    # Move user from pending to confirmed
+    # Перемещаем пользователя в созданных пользователей
     confirmed_user = ConfirmedUser(
         users_ids=json.dumps([pending_user.user_id]),
         first_name=pending_user.first_name,

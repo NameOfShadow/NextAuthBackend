@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 from sqlmodel import select
 
 from app.db.database import get_session
+from app.db.loginuser.crud import get_all_login_users
+from app.db.loginuser.model import LoginUser
 from app.db.pendinguser.model import PendingUser
 
-USER_LIFETIME = timedelta(minutes=10)
+USER_LIFETIME = timedelta(seconds=10)
 
 log_directory = "logs"
 os.makedirs(log_directory, exist_ok=True)
@@ -39,6 +41,35 @@ def delete_old_pending_users():
             session.delete(user)
 
         session.commit()
+    except Exception as e:
+        print(f"Ошибка при удалении старых пользователей: {str(e)}")
+    finally:
+        session.close()
+
+
+def log_login_deletion(user):
+    log_message = (
+        f"{datetime.utcnow().isoformat()} - INFO - Удален входящий пользователь: "
+        f"Почта: {user.email}, ID: {user.user_id}\n"
+    )
+
+    with open(get_log_filename(), 'a', encoding='utf-8') as f:
+        f.write(log_message)
+
+
+def delete_old_login_users():
+    session = next(get_session())
+    print(get_all_login_users(session))
+    try:
+        cutoff_time = datetime.utcnow() - USER_LIFETIME
+        old_users = session.exec(select(LoginUser).where(LoginUser.key_expiry < cutoff_time)).all()
+
+        for user in old_users:
+            log_login_deletion(user)
+            session.delete(user)
+
+        session.commit()
+        print(get_all_login_users(session))
     except Exception as e:
         print(f"Ошибка при удалении старых пользователей: {str(e)}")
     finally:

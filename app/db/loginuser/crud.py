@@ -1,3 +1,4 @@
+from pydantic import EmailStr
 from sqlmodel import Session, select
 
 from app.db.loginuser.model import LoginUser
@@ -10,12 +11,18 @@ def create_login_user(session: Session, user: LoginUser) -> LoginUser:
     return user
 
 
-def get_login_user(session: Session, email: str) -> LoginUser:
+def get_login_user(session: Session, email: EmailStr) -> LoginUser:
     return session.exec(select(LoginUser).where(LoginUser.email == email)).first()
 
 
 def get_all_login_users(session: Session):
     return session.exec(select(LoginUser)).all()
+
+
+def delete_login_user_email(session: Session, email: EmailStr):
+    delete_user = session.exec(select(LoginUser).where(LoginUser.email == email)).first()
+    session.delete(delete_user)
+    session.commit()
 
 
 def delete_expired_login_users(session: Session):
