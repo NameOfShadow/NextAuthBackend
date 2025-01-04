@@ -14,7 +14,7 @@ from app.db.loginuser.model import LoginUser
 router = APIRouter()
 MIN_WAIT_TIME = timedelta(minutes=1)
 
-####### В РАЗРАБОТКЕ + ПОЧТУ ВЕЗДЕ
+####### В РАЗРАБОТКЕ + ПОЧТУ ВЕЗДЕ !
 @router.post("/login/")
 def login(user: UserLogin, session: Session = Depends(get_session)):
     # Ищем пользователя в базе данных с таким email
