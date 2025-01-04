@@ -8,5 +8,5 @@ router = APIRouter()
 
 
 @router.get("confirmed/{id}/")
-def list_users(id: int, session: Session = Depends(get_session)):
+async def list_users(id: int, session: Session = Depends(get_session)):
     return get_all_confirmed_user_userid(session, id)

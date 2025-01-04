@@ -1,7 +1,11 @@
+import logging
+
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.background_tasks.tasks import dou
 
+# Отключаем стандартные логи APScheduler
+logging.getLogger('apscheduler').setLevel(logging.WARNING)
 
 # Настройка фоновых задач
 def start_scheduler():

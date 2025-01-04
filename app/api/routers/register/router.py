@@ -10,15 +10,30 @@ from app.db.confirmeduser.model import ConfirmedUser
 from app.db.database import get_session
 from app.db.pendinguser.crud import create_pending_user, get_pending_user, delete_pending_user_email
 from app.db.pendinguser.model import PendingUser
+from send_email import email_sender
 from .model import UserRegister, KeyCheck
 
 router = APIRouter()
 
 MIN_WAIT_TIME = timedelta(minutes=1)
 
+"""
+async def main():
+    
+
+    # Отправка письма
+    await email_sender.send_email(
+        subject="Простое письмо",
+        body="Это тестовое письмо, отправленное с базовыми настройками.",
+        recipients=["0nameofshadow0@gmail.com"]
+    )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+"""
 
 @router.post("/register/")
-def add_user(user: UserRegister, session: Session = Depends(get_session)):
+async def add_user(user: UserRegister, session: Session = Depends(get_session)):
     # Проверка на созданного пользователя
     existing_confirmed_user = get_confirmed_user_email(session, user.email)
 
@@ -41,8 +56,15 @@ def add_user(user: UserRegister, session: Session = Depends(get_session)):
         key_expiry=datetime.utcnow() + MIN_WAIT_TIME
     )
 
-    return create_pending_user(session, new_user)
+    url = f"https://noplayground.ru/nextauth/api/validate/?email={new_user.email}?key={new_user.key}"
 
+    await email_sender.send_email(
+        subject="NextAuth Registration",
+        body=f"Перейдите по ссылке, чтобы подтвердить свой профиль\nСсылка: {url}",
+        recipients=[user.email]
+    )
+
+    return create_pending_user(session, new_user)
 
 def handle_existing_pending_user(existing_pending_user, session, user):
     now = datetime.utcnow()
@@ -63,7 +85,7 @@ def handle_existing_pending_user(existing_pending_user, session, user):
 
 
 @router.post("/validate/")
-def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
+async def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
     pending_user = get_pending_user(session, data.email)
 
     if not pending_user:

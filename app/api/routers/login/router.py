@@ -8,14 +8,16 @@ from sqlmodel import Session
 from app.api.routers.login.model import UserLogin, KeyCheck
 from app.db.confirmeduser.crud import get_confirmed_user_email
 from app.db.database import get_session
-from app.db.loginuser.crud import get_login_user, create_login_user, delete_login_user_email
+from app.db.loginuser.crud import get_login_user_email, create_login_user, delete_login_user_email, \
+    get_all_login_user_email
 from app.db.loginuser.model import LoginUser
 
 router = APIRouter()
 MIN_WAIT_TIME = timedelta(minutes=1)
-####### В РАЗРАБОТКЕ + ПОЧТУ ВЕЗДЕ !    !
+
+
 @router.post("/login/")
-def login(user: UserLogin, session: Session = Depends(get_session)):
+async def login(user: UserLogin, session: Session = Depends(get_session)):
     # Ищем пользователя в базе данных с таким email
     confirmed_user = get_confirmed_user_email(session, user.email)
 
@@ -26,13 +28,18 @@ def login(user: UserLogin, session: Session = Depends(get_session)):
     if user.user_id in users_ids:
         return {"message": "Такой пользователь с таким user_id уже есть в профиле"}
 
-    existing_login_user = get_login_user(session, user.email)
-    if existing_login_user and existing_login_user.user_id == user.user_id:
-        print(123)
+    # Получаем всех пользователей с данным email
+    existing_login_users = get_all_login_user_email(session, user.email)
+
+    # Ищем пользователя с таким же user_id среди существующих
+    existing_login_user = next(
+        (existing_user for existing_user in existing_login_users if existing_user.user_id == user.user_id), None)
+
+    if existing_login_user:
+        # Если пользователь найден с таким user_id, обрабатываем его
         return handle_existing_login_user(existing_login_user, session)
     else:
-        print(321)
-        # Создание нового запроса на вход
+        # Если пользователь не найден, создаем нового
         new_user = LoginUser(
             user_id=user.user_id,
             email=user.email,
@@ -40,30 +47,37 @@ def login(user: UserLogin, session: Session = Depends(get_session)):
             key_expiry=datetime.utcnow() + MIN_WAIT_TIME
         )
 
-        return {"message": "Отправлено уведомление для подтверждения.", "info": create_login_user(session, new_user)}
+        # Создаем нового пользователя в базе данных
+        return create_login_user(session, new_user)
 
 
 def handle_existing_login_user(existing_login_user, session):
     now = datetime.utcnow()
+
+    # Проверяем, не истек ли срок действия кода
     if now < existing_login_user.key_expiry:
         remaining_time = (existing_login_user.key_expiry - now).total_seconds()
         return {"message": f"Новый код для подтверждения можно будет отправить через {int(remaining_time)} секунд."}
 
-    # Update key and expiry time if it's been more than 1 minute
+    # Если прошло больше времени, чем 1 минута, обновляем ключ и срок действия
     existing_login_user.key = str(uuid.uuid4())
-    existing_login_user.key_expiry = now + MIN_WAIT_TIME
+    existing_login_user.key_expiry = now + MIN_WAIT_TIME  # MIN_WAIT_TIME должно быть определено ранее
+
+    # Добавляем изменения в сессию и сохраняем их
     session.add(existing_login_user)
     session.commit()
 
-    # Send new confirmation email
-    # send_confirmation_email(user.email, existing_pending_user.key)
+    # Обновляем объект, чтобы получить актуальные данные
+    session.refresh(existing_login_user)
 
-    return {"message": f"Отправлен новый код подтверждения на почту. {existing_login_user.key}"}
+    # Возвращаем новый ключ
+    {existing_login_user.key}
+    return {"message": f"Отправлен новый код подтверждения на почту!"}
 
 
 @router.post("/validate_login/")
-def validate_login(data: KeyCheck, session: Session = Depends(get_session)):
-    login_user = get_login_user(session, data.email)
+async def validate_login(data: KeyCheck, session: Session = Depends(get_session)):
+    login_user = get_login_user_email(session, data.email)
     confirmed_user = get_confirmed_user_email(session, data.email)
 
     if not login_user:

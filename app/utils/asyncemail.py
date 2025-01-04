@@ -1,19 +1,19 @@
-import logging
 import os
-from email.message import EmailMessage
-from typing import List, Optional
-
+import asyncio
 import aiosmtplib
+from typing import List, Optional
+from email.message import EmailMessage
+from datetime import datetime
 
 
 class EmailSender:
     def __init__(
-            self,
-            email_address: str,
-            email_password: str,
-            smtp_server: str,
-            smtp_port: int = 587,
-            log_file_path: Optional[str] = None
+        self,
+        email_address: str,
+        email_password: str,
+        smtp_server: str,
+        smtp_port: int = 587,
+        log_file_path: Optional[str] = None
     ) -> None:
         """
         Инициализация отправителя.
@@ -28,31 +28,33 @@ class EmailSender:
         self.email_password = email_password
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
+        self.log_file_path = log_file_path
 
-        if log_file_path:
-            log_dir = os.path.dirname(log_file_path)
+        # Создание директории для файла логов, если она не существует
+        if self.log_file_path:
+            log_dir = os.path.dirname(self.log_file_path)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir)
 
-            # Настройка логирования
-            logging.basicConfig(
-                level=logging.INFO,
-                format="%(asctime)s - %(levelname)s - %(message)s",
-                handlers=[
-                    logging.FileHandler(log_file_path, encoding="utf-8"),
-                    logging.StreamHandler()
-                ]
-            )
-            self.logger = logging.getLogger(__name__)
-        else:
-            self.logger = logging.getLogger(__name__)
+    def _log(self, message: str, level: str = "INFO") -> None:
+        """
+        Кастомная функция для записи логов в файл.
+
+        :param message: Сообщение для записи в лог.
+        :param level: Уровень логирования (например, INFO, ERROR).
+        """
+        if self.log_file_path:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_message = f"[{timestamp}] [{level}] {message}\n"
+            with open(self.log_file_path, "a", encoding="utf-8") as log_file:
+                log_file.write(log_message)
 
     async def send_email(
-            self,
-            subject: str,
-            body: str,
-            recipients: List[str],
-            sender: Optional[str] = None
+        self,
+        subject: str,
+        body: str,
+        recipients: List[str],
+        sender: Optional[str] = None
     ) -> None:
         """
         Отправляет email сообщение.
@@ -81,11 +83,11 @@ class EmailSender:
                 password=self.email_password,
                 start_tls=True  # Автоматическое использование STARTTLS
             )
-            if self.logger:
-                self.logger.info(f"Сообщение успешно отправлено! Тема: '{subject}', Получатели: {recipients}")
+            log_message = f"Сообщение успешно отправлено! Тема: '{subject}', Получатели: {recipients}"
+            self._log(log_message, level="INFO")
         except Exception as e:
-            if self.logger:
-                self.logger.error(f"Ошибка при отправке письма. Тема: '{subject}', Ошибка: {e}")
+            log_message = f"Ошибка при отправке письма. Тема: '{subject}', Ошибка: {e}"
+            self._log(log_message, level="ERROR")
 
 
 # Пример использования

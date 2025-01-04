@@ -7,7 +7,7 @@ from app.api.routers.register import router as register
 from app.api.routers.users import router as users
 from app.background_tasks.task_scheduler import start_scheduler
 from app.db.database import init_db
-from config import Settings
+from config import settings
 
 
 @asynccontextmanager
@@ -17,7 +17,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-settings = Settings()
 
 # Инициализация базы данных
 init_db()

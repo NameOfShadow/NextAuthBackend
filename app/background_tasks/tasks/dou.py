@@ -9,7 +9,7 @@ from app.db.loginuser.crud import get_all_login_users
 from app.db.loginuser.model import LoginUser
 from app.db.pendinguser.model import PendingUser
 
-USER_LIFETIME = timedelta(seconds=10)
+USER_LIFETIME = timedelta(minutes=10)
 
 log_directory = "logs"
 os.makedirs(log_directory, exist_ok=True)
@@ -59,7 +59,6 @@ def log_login_deletion(user):
 
 def delete_old_login_users():
     session = next(get_session())
-    print(get_all_login_users(session))
     try:
         cutoff_time = datetime.utcnow() - USER_LIFETIME
         old_users = session.exec(select(LoginUser).where(LoginUser.key_expiry < cutoff_time)).all()
@@ -69,7 +68,6 @@ def delete_old_login_users():
             session.delete(user)
 
         session.commit()
-        print(get_all_login_users(session))
     except Exception as e:
         print(f"Ошибка при удалении старых пользователей: {str(e)}")
     finally:

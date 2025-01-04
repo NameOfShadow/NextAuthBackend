@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from pydantic import EmailStr
 from sqlmodel import Session, select
 
@@ -11,8 +13,12 @@ def create_login_user(session: Session, user: LoginUser) -> LoginUser:
     return user
 
 
-def get_login_user(session: Session, email: EmailStr) -> LoginUser:
+def get_login_user_email(session: Session, email: EmailStr) -> LoginUser:
     return session.exec(select(LoginUser).where(LoginUser.email == email)).first()
+
+
+def get_all_login_user_email(session: Session, email: EmailStr) -> Sequence[LoginUser]:
+    return session.exec(select(LoginUser).where(LoginUser.email == email)).all()
 
 
 def get_all_login_users(session: Session):
