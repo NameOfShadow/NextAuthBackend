@@ -13,8 +13,3 @@ class UserBase(BaseModel):
 # Схема для создания пользователя (без id)
 class UserRegister(UserBase):
     pass
-
-
-class KeyCheck(BaseModel):
-    email: EmailStr
-    key: str

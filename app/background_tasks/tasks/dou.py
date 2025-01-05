@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from sqlmodel import select
 
 from app.db.database import get_session
-from app.db.loginuser.crud import get_all_login_users
 from app.db.loginuser.model import LoginUser
 from app.db.pendinguser.model import PendingUser
 

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 
 from app.api.routers.login import router as login
 from app.api.routers.register import router as register
@@ -18,13 +18,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 # Инициализация базы данных
 init_db()
 
-# Подключение роутеров
-app.include_router(register.router, prefix="/api/register", tags=["register"])
-app.include_router(login.router, prefix="/api/login", tags=["login"])
-app.include_router(users.router, prefix="/api/users", tags=["users"])
+
+# Главный роутер с общим префиксом
+main_router = APIRouter(prefix="/api")
+
+
+# Подключение модульных роутеров к главному роутеру
+main_router.include_router(register.router, prefix="/register", tags=["register"])
+main_router.include_router(login.router, prefix="/login", tags=["login"])
+main_router.include_router(users.router, prefix="/users", tags=["users"])
+
+
+# Подключение главного роутера к приложению
+app.include_router(main_router)
+
 
 if __name__ == "__main__":
     import uvicorn

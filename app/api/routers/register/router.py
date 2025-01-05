@@ -1,51 +1,50 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import EmailStr
 from sqlmodel import Session
 
 from app.db.confirmeduser.crud import create_confirmed_user, get_confirmed_user_email
 from app.db.confirmeduser.model import ConfirmedUser
 from app.db.database import get_session
-from app.db.pendinguser.crud import create_pending_user, get_pending_user, delete_pending_user_email
+from app.db.pendinguser.crud import (
+    create_pending_user,
+    get_pending_user,
+    delete_pending_user_email,
+)
 from app.db.pendinguser.model import PendingUser
+from app.utils.handle_existing import handle_existing_user
+from config import settings
 from send_email import email_sender
-from .model import UserRegister, KeyCheck
+from .model import UserRegister
 
 router = APIRouter()
 
-MIN_WAIT_TIME = timedelta(minutes=1)
 
-"""
-async def main():
-    
-
-    # Отправка письма
-    await email_sender.send_email(
-        subject="Простое письмо",
-        body="Это тестовое письмо, отправленное с базовыми настройками.",
-        recipients=["0nameofshadow0@gmail.com"]
-    )
-
-if __name__ == "__main__":
-    asyncio.run(main())
-"""
-
-@router.post("/register/")
+@router.post("/")
 async def add_user(user: UserRegister, session: Session = Depends(get_session)):
     # Проверка на созданного пользователя
     existing_confirmed_user = get_confirmed_user_email(session, user.email)
 
     if existing_confirmed_user:
-        raise HTTPException(status_code=400, detail="Пользователь с такой почтой уже зарегистрирован.")
+        raise HTTPException(
+            status_code=400, detail="Пользователь с такой почтой уже зарегистрирован."
+        )
 
     # Check if user is pending
     existing_pending_user = get_pending_user(session, user.email)
     if existing_pending_user:
-        return handle_existing_pending_user(existing_pending_user, session, user)
+        return await handle_existing_user(
+            existing_pending_user,
+            "register",
+            f"user_id={user.user_id}&email={user.email}",
+            session,
+        )
 
-    # Register new user
+    # Регистрируем нового пользователя
     new_user = PendingUser(
         user_id=user.user_id,
         first_name=user.first_name,
@@ -53,45 +52,35 @@ async def add_user(user: UserRegister, session: Session = Depends(get_session)):
         middle_name=user.middle_name,
         email=user.email,
         key=str(uuid.uuid4()),
-        key_expiry=datetime.utcnow() + MIN_WAIT_TIME
+        key_expiry=datetime.utcnow() + settings.min_wait_time,
     )
 
-    url = f"https://noplayground.ru/nextauth/api/validate/?email={new_user.email}?key={new_user.key}"
+    url = f"{settings.api_site}/register/validate/?email={new_user.email}&key={new_user.key}"
 
     await email_sender.send_email(
         subject="NextAuth Registration",
-        body=f"Перейдите по ссылке, чтобы подтвердить свой профиль\nСсылка: {url}",
-        recipients=[user.email]
+        body=f"Перейдите по ссылке, чтобы подтвердить свой профиль.\nСсылка: {url}",
+        recipients=[user.email],
     )
 
-    return create_pending_user(session, new_user)
+    # Создаем нового пользователя в базе данных ожидающих подтверждения
+    create_pending_user(session, new_user)
 
-def handle_existing_pending_user(existing_pending_user, session, user):
-    now = datetime.utcnow()
-    if now < existing_pending_user.key_expiry:
-        remaining_time = (existing_pending_user.key_expiry - now).total_seconds()
-        return {"message": f"Новый код для подтверждения можно будет отправить через {int(remaining_time)} секунд."}
-
-    # Обновить ключ спустя MIN_WAIT_TIME времени
-    existing_pending_user.key = str(uuid.uuid4())
-    existing_pending_user.key_expiry = now + MIN_WAIT_TIME
-    session.add(existing_pending_user)
-    session.commit()
-
-    # Send new confirmation email
-    # send_confirmation_email(user.email, existing_pending_user.key)
-
-    return {"message": "Отправлен новый код подтверждения на почту."}
+    return {"message": f"Письмо для создания аккаунта успешно отправлено на почту: {user.email}"}
 
 
-@router.post("/validate/")
-async def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
-    pending_user = get_pending_user(session, data.email)
+@router.get("/validate/")
+async def validate_key(
+        email: EmailStr = Query(..., description="Email to validate"),
+        key: str = Query(..., description="Key for validation"),
+        session: Session = Depends(get_session),
+):
+    pending_user = get_pending_user(session, email)
 
     if not pending_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден.")
 
-    if pending_user.key != data.key or datetime.utcnow() > pending_user.key_expiry:
+    if pending_user.key != key or datetime.utcnow() > pending_user.key_expiry:
         raise HTTPException(status_code=400, detail="Неверный или истекший ключ.")
 
     # Перемещаем пользователя в созданных пользователей
@@ -100,10 +89,11 @@ async def validate_key(data: KeyCheck, session: Session = Depends(get_session)):
         first_name=pending_user.first_name,
         last_name=pending_user.last_name,
         middle_name=pending_user.middle_name,
-        email=pending_user.email
+        email=pending_user.email,
     )
 
     create_confirmed_user(session, confirmed_user)
-    delete_pending_user_email(session, data.email)
+    delete_pending_user_email(session, email)
 
-    return {"message": "Ключ успешно проверен. Пользователь зарегистрирован."}
+    # URL для редиректа после успешной регистрации
+    return RedirectResponse(url=f"{settings.my_site}", status_code=302)
