@@ -16,7 +16,7 @@ def get_confirmed_user_userid(session: Session, user_id: int) -> ConfirmedUser:
     return session.exec(query).first()
 
 
-def get_all_confirmed_user_userid(session: Session, user_ids: list) -> list:
+def get_all_confirmed_user_userid(session: Session, user_ids: list | int) -> list:
     # Убедимся, что user_ids - список целых чисел
     if not isinstance(user_ids, list):
         user_ids = [user_ids]
