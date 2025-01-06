@@ -1,29 +1,34 @@
-# Используем официальный образ Python 3.10.10 как базовый
+# Используем официальный образ Python
 FROM python:3.10.10-slim
 
-# Установим зависимости для системы
+# Устанавливаем зависимости для системы
 RUN apt-get update && apt-get install -y \
+    apt-utils \
     gcc \
     libpq-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем Poetry
-RUN pip install --no-cache-dir poetry
+# Устанавливаем Poetry и обновляем pip
+RUN pip install --upgrade pip && pip install --no-cache-dir poetry
 
 # Устанавливаем рабочую директорию в контейнере
 WORKDIR /nextauth_backend
 
-# Копируем только файл pyproject.toml и poetry.lock для установки зависимостей
+# Копируем только файлы pyproject.toml и poetry.lock для установки зависимостей
 COPY pyproject.toml poetry.lock /nextauth_backend/
 
-# Устанавливаем зависимости с помощью poetry
-RUN poetry install --no-dev --no-root
+# Устанавливаем зависимости через Poetry
+RUN poetry install --only main --no-root
 
-# Копируем все файлы проекта в рабочую директорию контейнера
+# Копируем остальные файлы проекта
 COPY . .
+
+# Указываем переменную окружения для игнорирования предупреждений pip
+ENV PIP_ROOT_USER_ACTION=ignore
 
 # Открываем порт, на котором будет работать приложение
 EXPOSE 8001
 
-# Указываем команду для запуска приложения с Uvicorn (предполагается, что ваше приложение находится в файле main.py)
-CMD ["python", "nextauth_backend/main.py"]
+# Указываем команду для запуска приложения через Python
+CMD ["python", "main.py"]
+

@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = [settings.my_site, "https://a073-217-66-154-125.ngrok-free.app"]
+origins = [settings.my_site]
 
 app.add_middleware(
     CORSMiddleware,
