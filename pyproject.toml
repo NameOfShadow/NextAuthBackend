@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "nextauthbackend"
+version = "0.1.0"
+description = ""
+authors = ["NOS <0nameofshadow0@gmail.com>"]
+license = "*MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+sqlmodel = "^0.0.22"
+pydantic-settings = "^2.7.1"
+pydantic = {extras = ["email"], version = "^2.10.4"}
+apscheduler = "^3.11.0"
+aiosmtplib = "^3.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

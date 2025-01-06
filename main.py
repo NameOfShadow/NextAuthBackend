@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers.login import router as login
 from app.api.routers.register import router as register
@@ -8,7 +9,6 @@ from app.api.routers.users import router as users
 from app.background_tasks.task_scheduler import start_scheduler
 from app.db.database import init_db
 from config import settings
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,6 +18,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+origins = [settings.my_site, "https://a073-217-66-154-125.ngrok-free.app"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Инициализация базы данных
 init_db()
