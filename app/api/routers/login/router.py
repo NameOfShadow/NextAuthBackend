@@ -75,18 +75,15 @@ async def validate_key(
     confirmed_user = get_confirmed_user_email(session, email)
 
     if not login_user:
-        #raise HTTPException(status_code=404, detail="Пользователь не делал вход в акаунт с данной почтой.")
-        return RedirectResponse(url=f"{settings.my_site}/login/fail", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}login/fail/Пользователь с этой почтой не зарегистрирован", status_code=302)
 
     if login_user.key != key or datetime.utcnow() > login_user.key_expiry:
-        #raise HTTPException(status_code=400, detail="Неверный или истекший ключ.")
-        return RedirectResponse(url=f"{settings.my_site}/login/fail", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}login/fail/Неверный или истекший код. Пожалуйста попробуйте снова", status_code=302)
 
     users_ids = json.loads(confirmed_user.users_ids)
 
     if user_id in users_ids:
-        #return {"message": "Такой пользователь с таким user_id уже есть в профиле"}
-        return RedirectResponse(url=f"{settings.my_site}/login/fail", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}login/fail/Такой пользователь с таким user_id уже есть в профиле", status_code=302)
     else:
         # Добавляем user_id в список
         users_ids.append(user_id)
@@ -98,4 +95,4 @@ async def validate_key(
         delete_login_user_email(session, login_user.email)
 
         # Сделать ридерект на сайт после создания
-        return RedirectResponse(url=f"{settings.my_site}/login/success", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}login/success", status_code=302)

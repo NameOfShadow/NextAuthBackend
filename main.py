@@ -42,6 +42,7 @@ main_router.include_router(login.router, prefix="/login", tags=["login"])
 main_router.include_router(users.router, prefix="/users", tags=["users"])
 
 
+
 # Подключение главного роутера к приложению
 app.include_router(main_router)
 

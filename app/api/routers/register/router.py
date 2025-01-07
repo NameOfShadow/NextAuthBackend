@@ -78,12 +78,10 @@ async def validate_key(
     pending_user = get_pending_user(session, email)
 
     if not pending_user:
-        #raise HTTPException(status_code=404, detail="Пользователь не найден.")
-        return RedirectResponse(url=f"{settings.my_site}/register/fail", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}register/fail/Пользователь не найден. Попробуйте зарегистрироваться снова", status_code=302)
 
     if pending_user.key != key or datetime.utcnow() > pending_user.key_expiry:
-        #raise HTTPException(status_code=400, detail="Неверный или истекший ключ.")
-        return RedirectResponse(url=f"{settings.my_site}/register/fail", status_code=302)
+        return RedirectResponse(url=f"{settings.my_site}register/fail/Неверный или истекший код.", status_code=302)
 
     # Перемещаем пользователя в созданных пользователей
     confirmed_user = ConfirmedUser(
@@ -98,4 +96,4 @@ async def validate_key(
     delete_pending_user_email(session, email)
 
     # URL для редиректа после успешной регистрации
-    return RedirectResponse(url=f"{settings.my_site}/register/success", status_code=302)
+    return RedirectResponse(url=f"{settings.my_site}register/success", status_code=302)
